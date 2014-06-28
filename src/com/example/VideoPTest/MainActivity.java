@@ -210,7 +210,6 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback, On
 	
 	/**
      * Async task class to get json by making HTTP call
-     * PARSER STILL NEED TO BE TESTED
      * */
     private class getTest extends AsyncTask<Void, Void, Void> {
  
