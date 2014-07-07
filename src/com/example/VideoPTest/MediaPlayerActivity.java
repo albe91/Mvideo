@@ -104,9 +104,9 @@ public class MediaPlayerActivity extends Activity implements SurfaceHolder.Callb
 			}
 		});	
 
-		//Initializing receiver for low battery
-		registerReceiver(mBatInfoReceiver, new IntentFilter(
-        	    Intent.ACTION_BATTERY_LOW));
+//		//Initializing receiver for low battery
+//		registerReceiver(mBatInfoReceiver, new IntentFilter(
+//        	    Intent.ACTION_BATTERY_LOW));
 	}
 	
 	 //Receiver for low battery state
@@ -197,8 +197,7 @@ public class MediaPlayerActivity extends Activity implements SurfaceHolder.Callb
 
 	@Override
 	public void surfaceDestroyed(SurfaceHolder arg0) {
-		// TODO Auto-generated method stub
-		
+		// TODO Auto-generated method stub		
 	}
 	
 	@Override
@@ -209,7 +208,7 @@ public class MediaPlayerActivity extends Activity implements SurfaceHolder.Callb
     	int level = batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
     	int scale = batteryStatus.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
 
-    	float batteryPct = level;
+    	float batteryPct = (level * 100)/ scale;
     	
     	//Creates the json file to send back to server
     	JSONObject testComplete = new JSONObject();
@@ -233,5 +232,10 @@ public class MediaPlayerActivity extends Activity implements SurfaceHolder.Callb
         .setIcon(android.R.drawable.ic_dialog_alert)
          .show();	
 		
+	}
+	
+	//Disable back press button
+	@Override
+	public void onBackPressed() {
 	}
 }
