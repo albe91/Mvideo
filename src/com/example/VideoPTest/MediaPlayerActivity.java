@@ -3,8 +3,6 @@ package com.example.VideoPTest;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import com.example.VideoPTest.util.*;
-
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.ProgressDialog;
@@ -20,10 +18,14 @@ import android.media.MediaPlayer.OnPreparedListener;
 import android.os.BatteryManager;
 import android.os.Bundle;
 import android.os.Handler;
+import android.telephony.SignalStrength;
+import android.telephony.TelephonyManager;
 import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
+
+import com.example.VideoPTest.util.SystemUiHider;
 
 
 /**
@@ -207,14 +209,22 @@ public class MediaPlayerActivity extends Activity implements SurfaceHolder.Callb
     	Intent batteryStatus = context.registerReceiver(null, ifilter);
     	int level = batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
     	int scale = batteryStatus.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
+    	String imei = null;
 
     	float batteryPct = (level * 100)/ scale;
+    	
+    	//Getting device's IMEI
+    	TelephonyManager mngr = (TelephonyManager)getSystemService(Context.TELEPHONY_SERVICE);
+    	imei = mngr.getDeviceId();   	
     	
     	//Creates the json file to send back to server
     	JSONObject testComplete = new JSONObject();
     	try {
     		testComplete.put("status", "complete");
 			testComplete.put("Battery Level", batteryPct);
+			testComplete.put("imei","imei"); //passing a unique identifier, we use IMEI in this case
+			testComplete.put("birghtness", getWindow().getAttributes().screenBrightness); //passing actual brightness
+						
 		} catch (JSONException e) {
 			e.printStackTrace();
 		}
@@ -230,8 +240,7 @@ public class MediaPlayerActivity extends Activity implements SurfaceHolder.Callb
             }
          })
         .setIcon(android.R.drawable.ic_dialog_alert)
-         .show();	
-		
+         .show();
 	}
 	
 	//Disable back press button

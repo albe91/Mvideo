@@ -43,7 +43,8 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
 	private static final String DEBUG_TAG = "HttpExample";
 	private TextView textView;
 	private String server_url="http://pastebin.com/";
-	private String powerOnURL="/power/on";
+	private String plugUsbURL = server_url+"/power/on";
+	private String unPlugUsb = server_url+"power/off";
 	//the content resolver used as a handle to the system's settings 
     private ContentResolver cResolver;
     
@@ -108,18 +109,22 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
         int status = batteryStatus.getIntExtra(BatteryManager.EXTRA_STATUS, -1);
     	boolean isCharging = status == BatteryManager.BATTERY_STATUS_CHARGING;
         
-        
-    	if (isCharging == false && batteryPct <= 50)
-        		reChargeBattery();        	
-    	else if(batteryPct <= 50){
-    		
+    	if (isCharging == false){
+    		if(batteryPct <= 50)
+        		plugUsb(); //if we are not charging and the battery lvl is under the 50% we ask for power
+    	}
+    	//if we are here we are charging, so we have to check if the battery is above or under 50%
+    	//if under 50% wait for reaching the 80%
+    	else if(batteryPct <= 50){    		
     		while(batteryPct<=80){
             	batteryStatus = context.registerReceiver(null, ifilter);        
                 level = batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
                 scale = batteryStatus.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
                 batteryPct = (level * 100) / (float)scale;
             		}        	
-        }             
+        }
+    	//if above 50% we unplug the usb and we cna start with testing
+    	else unPlugUsb();
     }
     
     
@@ -188,7 +193,7 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
 	            })
 	         .setIcon(android.R.drawable.ic_dialog_alert)
 		     .show();
-            reChargeBattery();
+            plugUsb();
         }	        
     };
     
@@ -221,7 +226,7 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
 	  {
 	    super.onActivityResult(requestCode, resultCode, data);
 	    if (resultCode == RESULT_CANCELED) 	
-	    	reChargeBattery();
+	    	plugUsb();
 	    else  new getTest().execute();
 
 	  }
@@ -306,6 +311,7 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
  
             if (jsonStr != null) {
                 try {
+                	//da testare  
                     testJson = new JSONObject(jsonStr);
                     AudioManager audioManager;
                 	audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE); 
@@ -425,20 +431,21 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
     
     //connects to serve to turn usb power on
     //Returns only when batter has reached 80% of charge
-    public void reChargeBattery(){
+    public void plugUsb(){
+    	boolean unPlug = false;
     	Context context = getApplicationContext();
         CharSequence text = "Connecting to server for USB plug";
         int duration = Toast.LENGTH_LONG;
         Toast.makeText(context, text, duration).show();
 //    	HttpClient httpclient = new DefaultHttpClient();
 //        try {
-//			HttpResponse response = httpclient.execute(new HttpGet(powerOnURL));
+//			HttpResponse response = httpclient.execute(new HttpGet(plugUsb));
 //		} catch (ClientProtocolException e) {
 //			e.printStackTrace();
 //		} catch (IOException e) {
 //			e.printStackTrace();
 //		}
-//        Context context = getApplicationContext();
+//       Context context = getApplicationContext();
 //    	IntentFilter ifilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
 //    	Intent batteryStatus = context.registerReceiver(null, ifilter);
 //    	int level = batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
@@ -449,10 +456,35 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
 //            scale = batteryStatus.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
 //            batteryPct = (level * 100) / (float)scale;
 //        		}
+//      unPlugUsb();
     	
         
     }
     
+    //connects to server and ask for usb unplug.returns only when USB has been unplugged
+    public void unPlugUsb(){
+    	
+//    	while(true){
+//    	HttpClient httpclient = new DefaultHttpClient();
+//		try {
+//		HttpResponse response = httpclient.execute(new HttpGet(unPlugUsb));
+//		} catch (ClientProtocolException e) {
+//			e.printStackTrace();
+//		} catch (IOException e) {
+//			e.printStackTrace();
+//		}
+//    	Context context = getApplicationContext();        
+//        IntentFilter ifilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
+//        Intent batteryStatus = context.registerReceiver(null, ifilter);
+//        
+//    	// Are we charging / charged?
+//        int status = batteryStatus.getIntExtra(BatteryManager.EXTRA_STATUS, -1);
+//    	boolean isCharging = status == BatteryManager.BATTERY_STATUS_CHARGING;
+//        if (isCharging == false)
+//        		return;
+//    	}
+//    	
+    }
     
     
 	@Override
