@@ -1,5 +1,10 @@
 package com.example.VideoPTest;
 
+import java.io.IOException;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.URL;
+
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -23,6 +28,7 @@ import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.ActionBarActivity;
+import android.telephony.TelephonyManager;
 import android.text.Editable;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -45,6 +51,7 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
 	private String server_url="http://pastebin.com/";
 	private String plugUsbURL = server_url+"/power/on";
 	private String unPlugUsb = server_url+"power/off";
+	private String report = server_url+"completed-test";
 	//the content resolver used as a handle to the system's settings 
     private ContentResolver cResolver;
     
@@ -264,12 +271,7 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
 	        new getTest().execute();
 	    }
 		
-	}
-	
-	
-	
-	
-	
+	}	
 	
 	/**
      * Async task class to check connectivity and get json by making HTTP call
@@ -485,6 +487,76 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
 //    	}
 //    	
     }
+    
+    
+    /**
+     * Async task class used to send the report via HTTP POST through a JSON object
+     * */
+	private class sendReport extends AsyncTask<Void, Void, Void>{
+		
+		ProgressDialog pDialog;
+		
+		
+		@Override
+		protected void onPreExecute(){
+			pDialog = new ProgressDialog(MainActivity.this);
+	         pDialog.setMessage("Test completed. Sending report to server");
+	         pDialog.setCancelable(false);
+	         pDialog.show();
+		}
+		
+		@Override
+		protected Void doInBackground(Void... arg0){
+			Context context = getApplicationContext();
+	    	IntentFilter ifilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
+	    	Intent batteryStatus = context.registerReceiver(null, ifilter);
+	    	int level = batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
+	    	int scale = batteryStatus.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
+	    	String imei = null;
+
+	    	float batteryPct = (level * 100)/ scale;
+	    	
+	    	//Getting device's IMEI
+	    	TelephonyManager mngr = (TelephonyManager)getSystemService(Context.TELEPHONY_SERVICE);
+	    	imei = mngr.getDeviceId();   	
+	    	
+	    	//Creates the json file to send back to server
+	    	JSONObject testComplete = new JSONObject();
+	    	try {
+	    		testComplete.put("status", "complete");
+				testComplete.put("Battery Level", batteryPct);
+				testComplete.put("imei","imei"); //passing a unique identifier, we use IMEI in this case
+				testComplete.put("birghtness", getWindow().getAttributes().screenBrightness); //passing actual brightness
+							
+			} catch (JSONException e) {
+				e.printStackTrace();
+			}
+	    	
+	    	HttpURLConnection con;
+			try {
+				con = (HttpURLConnection) (new URL(report)).openConnection();
+				con.setRequestMethod("POST");
+		    	con.setDoInput(true);
+		    	con.setDoOutput(true);
+		    	con.connect();
+			} catch (MalformedURLException e) {				
+				e.printStackTrace();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+			
+			return null;
+	    				
+		}
+		
+	    @Override
+	    protected void onPostExecute(Void result){
+	    	int duration = Toast.LENGTH_SHORT;
+	        Toast.makeText(getApplicationContext(), "Report correctly sent", duration).show();	
+	        new getTest().execute();
+	    }
+		
+	}
     
     
 	@Override

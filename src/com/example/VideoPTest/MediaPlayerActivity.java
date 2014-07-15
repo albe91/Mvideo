@@ -1,5 +1,8 @@
 package com.example.VideoPTest;
 
+import java.net.HttpURLConnection;
+import java.net.URL;
+
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -18,7 +21,6 @@ import android.media.MediaPlayer.OnPreparedListener;
 import android.os.BatteryManager;
 import android.os.Bundle;
 import android.os.Handler;
-import android.telephony.SignalStrength;
 import android.telephony.TelephonyManager;
 import android.view.MotionEvent;
 import android.view.SurfaceHolder;
@@ -204,43 +206,11 @@ public class MediaPlayerActivity extends Activity implements SurfaceHolder.Callb
 	
 	@Override
 	public void onCompletion(MediaPlayer mp){
-		Context context = getApplicationContext();
-    	IntentFilter ifilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
-    	Intent batteryStatus = context.registerReceiver(null, ifilter);
-    	int level = batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
-    	int scale = batteryStatus.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
-    	String imei = null;
-
-    	float batteryPct = (level * 100)/ scale;
-    	
-    	//Getting device's IMEI
-    	TelephonyManager mngr = (TelephonyManager)getSystemService(Context.TELEPHONY_SERVICE);
-    	imei = mngr.getDeviceId();   	
-    	
-    	//Creates the json file to send back to server
-    	JSONObject testComplete = new JSONObject();
-    	try {
-    		testComplete.put("status", "complete");
-			testComplete.put("Battery Level", batteryPct);
-			testComplete.put("imei","imei"); //passing a unique identifier, we use IMEI in this case
-			testComplete.put("birghtness", getWindow().getAttributes().screenBrightness); //passing actual brightness
-						
-		} catch (JSONException e) {
-			e.printStackTrace();
-		}
-    	new AlertDialog.Builder(this)
-        .setTitle("Test completed, battery level = "+ batteryPct+"%")
-        .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
-            public void onClick(DialogInterface dialog, int which) { 
-            	dialog.dismiss();
-            	Intent returnIntent = new Intent();
-            	returnIntent.putExtra("result","ok");
-                MediaPlayerActivity.this.setResult(RESULT_OK,returnIntent);//tells previous activity the test was completed correctly
-        		finish();
-            }
-         })
-        .setIcon(android.R.drawable.ic_dialog_alert)
-         .show();
+		Intent returnIntent = new Intent();
+    	returnIntent.putExtra("result","ok");
+        MediaPlayerActivity.this.setResult(RESULT_OK,returnIntent);//tells previous activity the test was completed correctly
+		finish();
+		
 	}
 	
 	//Disable back press button
