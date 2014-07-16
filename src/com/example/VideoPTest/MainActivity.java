@@ -1,9 +1,13 @@
 package com.example.VideoPTest;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -49,6 +53,7 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
 	private static final String DEBUG_TAG = "HttpExample";
 	private TextView textView;
 	private String server_url="http://pastebin.com/";
+	private String test_url= server_url + "raw.php?i=BUZDE0Pj";
 	private String plugUsbURL = server_url+"/power/on";
 	private String unPlugUsb = server_url+"power/off";
 	private String report = server_url+"completed-test";
@@ -63,8 +68,9 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
     
     //JSON Node names
     private static final String TAG_ID = "id";
-    private static final String TAG_TEST_ID = "test_id";
+    private static final String TAG_DATA = "data";
     private static final String TAG_URL = "media";
+    private static final String TAG_LENGTH = "max_length";
     private static final String TAG_BRIGHTNESS = "brightness";
     private static final String TAG_NETWORK = "network";
     private static final String TAG_SIGNAL_STR = "signal_strenght";
@@ -79,6 +85,7 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
  	private int id;
 	private int test_id;
 	private String url;
+	private float length;
 	private String network_type;
 	private int brightness;
 	private int signal_strength;
@@ -218,12 +225,20 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
     }
     
    
-	//Start video stream in a different view
+	//Checks what is the type of URL(youtube or other) and instantiate the relative view to show it
 	public void streamVideo(View view){		
+		
 		Context context = getApplicationContext();
-       Intent mediaPlayerIntent = new Intent(this, MediaPlayerActivity.class);
-       mediaPlayerIntent.putExtra("url", url);
-       startActivityForResult(mediaPlayerIntent,0);     
+		Pattern p = Pattern.compile(".*?youtube\\.(com|it|fr).*");
+		Matcher m = p.matcher(url);
+		if(m.matches()) 
+			//instantiate the youtube activity
+			;
+		else{//instantiate the mediaPlayerActivity
+        Intent mediaPlayerIntent = new Intent(this, MediaPlayerActivity.class);
+        mediaPlayerIntent.putExtra("url", url);
+        startActivityForResult(mediaPlayerIntent,0);    
+		}
 		
 	}
 	
@@ -234,7 +249,7 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
 	    super.onActivityResult(requestCode, resultCode, data);
 	    if (resultCode == RESULT_CANCELED) 	
 	    	plugUsb();
-	    else  new getTest().execute();
+	    else  new sendReport().execute();
 
 	  }
 	
@@ -302,45 +317,45 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
             // Making a request to url and getting response. If the Url is valid the parsing is started, if not a popup inform the user to inset a valid URL
             String jsonStr=null;
 			try {
-				jsonStr = sh.makeServiceCall(server_url+"raw.php?i=j9ts4KKH", ServiceHandler.GET);
+				jsonStr = sh.makeServiceCall(test_url, ServiceHandler.GET);
 				flag = true;
 			} catch (Exception e) {
-				// TODO Auto-generated catch block
-				
+				flag = false;			
 			}
 			if(flag == true){
             Log.d("Response: ", "> " + jsonStr);
  
             if (jsonStr != null) {
                 try {
-                	//da testare  
+                	
                     testJson = new JSONObject(jsonStr);
                     AudioManager audioManager;
                 	audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE); 
-                	int max_volume = 0;    	
-                         
-                		//status = testJson.getString(TAG_STATUS);
-                    	id = testJson.getInt(TAG_ID);
-                    	test_id = testJson.getInt(TAG_TEST_ID);
-                        url = testJson.getString(TAG_URL);
-                        network_type = testJson.getString(TAG_NETWORK);
-                        brightness = testJson.getInt(TAG_BRIGHTNESS);
+                	int max_volume = 0;                     
+                		status = testJson.getString(TAG_STATUS);                    	
+                    	
+                    	JSONObject dataJson = testJson.getJSONObject(TAG_DATA);
+                    	id = dataJson.getInt(TAG_ID);
+                        url = dataJson.getString(TAG_URL);                        
+                        network_type = dataJson.getString(TAG_NETWORK);
+                        brightness = dataJson.getInt(TAG_BRIGHTNESS);
                         //Converting brightness from % to a value from 0 to 255
                     	brightness = (brightness * 255 / 100);
-                        signal_strength = testJson.getInt(TAG_SIGNAL_STR);
-                        volume = testJson.getInt(TAG_VOLUME);
+                        signal_strength = dataJson.getInt(TAG_SIGNAL_STR);
+                        volume = dataJson.getInt(TAG_VOLUME);
                         max_volume = audioManager.getStreamMaxVolume(audioManager.STREAM_MUSIC);//getting the max possible value of volume 
                     	volume = (volume * max_volume / 100);//converting the volume from 5 to a value from 0 to max_value
-                        started = testJson.getString(TAG_STARTED);
-                        completed = testJson.getString(TAG_COMPLETED);
-                        created_at = testJson.getString(TAG_CREATED_AT);
-                        updated_at = testJson.getString(TAG_UPDATED_AT);
+                        started = dataJson.getString(TAG_STARTED);
+                        completed = dataJson.getString(TAG_COMPLETED);
+                        created_at = dataJson.getString(TAG_CREATED_AT);
+                        updated_at = dataJson.getString(TAG_UPDATED_AT);
                     
                 } catch (JSONException e) {
                     e.printStackTrace();
                 }
             } else {
                 Log.e("ServiceHandler", "Couldn't get any data from the url");
+                flag = false;
             }
             pDialog.dismiss();
 			}
@@ -349,6 +364,7 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
  
         @Override
         protected void onPostExecute(Void result) {
+        	//if flag is true the test can start, otherwise prompt a error message to the user
         	if(flag == true){
             super.onPostExecute(result);
             Context context = getApplicationContext();
@@ -427,6 +443,7 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
 				}
 			}    		
     	}
+    	
     	pDialog.dismiss();
     	streamVideo(textView);
     }
@@ -518,7 +535,23 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
 	    	
 	    	//Getting device's IMEI
 	    	TelephonyManager mngr = (TelephonyManager)getSystemService(Context.TELEPHONY_SERVICE);
-	    	imei = mngr.getDeviceId();   	
+	    	imei = mngr.getDeviceId();   
+	    	
+	    	//Now we execute a shell command to execute dumpsys and get all the ifno about the battery
+	    	StringBuffer output = new StringBuffer();
+	        Process p;
+	        try {
+	          p = Runtime.getRuntime().exec("adb shell dumpsys battery");//<<<---------check command if works
+	          p.waitFor();
+	          BufferedReader reader = new BufferedReader(new InputStreamReader(p.getInputStream()));
+	                String line = "";
+	          while ((line = reader.readLine())!= null) {
+	            output.append(line + "\n");
+	          }
+	        } catch (Exception e) {
+	          e.printStackTrace();
+	        }
+	        String response = output.toString();	       
 	    	
 	    	//Creates the json file to send back to server
 	    	JSONObject testComplete = new JSONObject();
@@ -532,6 +565,7 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
 				e.printStackTrace();
 			}
 	    	
+	    	//setting up http connection. still need to figure out how to send the json
 	    	HttpURLConnection con;
 			try {
 				con = (HttpURLConnection) (new URL(report)).openConnection();
@@ -551,6 +585,7 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
 		
 	    @Override
 	    protected void onPostExecute(Void result){
+	    	pDialog.dismiss();
 	    	int duration = Toast.LENGTH_SHORT;
 	        Toast.makeText(getApplicationContext(), "Report correctly sent", duration).show();	
 	        new getTest().execute();
