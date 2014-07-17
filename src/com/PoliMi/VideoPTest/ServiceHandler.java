@@ -1,4 +1,4 @@
-package com.example.VideoPTest;
+package com.PoliMi.VideoPTest;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.List;

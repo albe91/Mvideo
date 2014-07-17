@@ -1,4 +1,4 @@
-package com.example.VideoPTest.util;
+package com.PoliMi.VideoPTest.util;
 
 import android.annotation.TargetApi;
 import android.app.Activity;

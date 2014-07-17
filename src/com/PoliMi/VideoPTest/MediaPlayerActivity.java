@@ -1,4 +1,4 @@
-package com.example.VideoPTest;
+package com.PoliMi.VideoPTest;
 
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -27,7 +27,8 @@ import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
 
-import com.example.VideoPTest.util.SystemUiHider;
+import com.PoliMi.VideoPTest.R;
+import com.PoliMi.VideoPTest.util.SystemUiHider;
 
 
 /**

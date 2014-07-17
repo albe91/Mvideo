@@ -1,4 +1,4 @@
-package com.example.VideoPTest;
+package com.PoliMi.VideoPTest;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -18,6 +18,8 @@ import org.apache.http.params.HttpConnectionParams;
 import org.apache.http.protocol.HTTP;
 import org.json.JSONException;
 import org.json.JSONObject;
+
+import com.PoliMi.VideoPTest.R;
 
 import android.app.AlertDialog;
 import android.app.ProgressDialog;
@@ -56,7 +58,7 @@ import android.widget.Toast;
 
 public class MainActivity extends ActionBarActivity implements SurfaceHolder.Callback, OnPreparedListener {
 	
-	private static final String DEBUG_TAG = "HttpExample";
+	
 	private TextView textView;
 	private String server_url="http://pastebin.com/";
 	private String test_url= server_url + "raw.php?i=BUZDE0Pj";
@@ -546,14 +548,14 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
 	    	TelephonyManager mngr = (TelephonyManager)getSystemService(Context.TELEPHONY_SERVICE);
 	    	imei = mngr.getDeviceId();   
 	    	
-	    	//Now we execute a shell command to execute dumpsys and get all the ifno about the battery
+	    	//Now we execute a shell command to execute dumpsys and get all the info about the battery
 	    	StringBuffer output = new StringBuffer();
 	        Process p;
 	        try {
 	          p = Runtime.getRuntime().exec("adb shell dumpsys battery");//<<<---------check command if works
 	          p.waitFor();
 	          BufferedReader reader = new BufferedReader(new InputStreamReader(p.getInputStream()));
-	                String line = "";
+	          String line = "";
 	          while ((line = reader.readLine())!= null) {
 	            output.append(line + "\n");
 	          }
@@ -578,8 +580,7 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
 	    	//setting up http connection and sending test info to server
 	    	HttpClient client = new DefaultHttpClient();
             HttpConnectionParams.setConnectionTimeout(client.getParams(), 10000); //Timeout Limit
-            HttpResponse response;	    	
-	    	HttpURLConnection con;
+            HttpResponse response;	   
 			try {
 				 HttpPost post = new HttpPost("http://posttestserver.com/post.php");
 				 StringEntity se = new StringEntity(testComplete.toString()+data);
