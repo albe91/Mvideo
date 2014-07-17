@@ -38,6 +38,7 @@ import android.net.wifi.WifiManager;
 import android.os.AsyncTask;
 import android.os.BatteryManager;
 import android.os.Bundle;
+import android.provider.Settings.SettingNotFoundException;
 import android.support.v4.app.Fragment;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.ActionBarActivity;
@@ -64,7 +65,7 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
 	private String test_url= server_url + "raw.php?i=BUZDE0Pj";
 	private String plugUsbURL = server_url+"/power/on";
 	private String unPlugUsb = server_url+"power/off";
-	private String report = server_url+"completed-test";
+	private String report = "http://posttestserver.com/post.php";
 	//the content resolver used as a handle to the system's settings 
     private ContentResolver cResolver;
     
@@ -539,31 +540,22 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
 	    	Intent batteryStatus = context.registerReceiver(null, ifilter);
 	    	int level = batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
 	    	int scale = batteryStatus.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
+	    	int voltage = batteryStatus.getIntExtra(BatteryManager.EXTRA_VOLTAGE, -1);
+	    	int temperature = batteryStatus.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, -1);
 	    	String imei = null;
 
 	    	float batteryPct = (level * 100)/ scale;
-	    	float brightness =  (getWindow().getAttributes().screenBrightness / 255) * 100;
+	    	float brightness=0;
+			try {
+				brightness = android.provider.Settings.System.getInt(getContentResolver(), android.provider.Settings.System.SCREEN_BRIGHTNESS) * 100 / 255;//getting battery lvl and calculating % of it
+			} catch (SettingNotFoundException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			}
 	    	
 	    	//Getting device's IMEI
 	    	TelephonyManager mngr = (TelephonyManager)getSystemService(Context.TELEPHONY_SERVICE);
 	    	imei = mngr.getDeviceId();   
-	    	
-	    	//Now we execute a shell command to execute dumpsys and get all the info about the battery
-	    	StringBuffer output = new StringBuffer();
-	        Process p;
-	        try {
-	          p = Runtime.getRuntime().exec("adb shell dumpsys battery");//<<<---------check command if works
-	          p.waitFor();
-	          BufferedReader reader = new BufferedReader(new InputStreamReader(p.getInputStream()));
-	          String line = "";
-	          while ((line = reader.readLine())!= null) {
-	            output.append(line + "\n");
-	          }
-	          
-	        } catch (Exception e) {
-	          e.printStackTrace();
-	        }	        	       
-	        String data = output.toString();
 	        
 	    	//Creates the json file to send back to server
 	    	JSONObject testComplete = new JSONObject();
@@ -572,6 +564,8 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
 				testComplete.put("Battery Level", batteryPct);
 				testComplete.put("imei","imei"); //passing a unique identifier, we use IMEI in this case
 				testComplete.put("brightness", brightness); //passing actual brightness
+				testComplete.put("voltage", voltage);
+				testComplete.put("temperature",temperature);
 							
 			} catch (JSONException e) {
 				e.printStackTrace();
@@ -582,8 +576,8 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
             HttpConnectionParams.setConnectionTimeout(client.getParams(), 10000); //Timeout Limit
             HttpResponse response;	   
 			try {
-				 HttpPost post = new HttpPost("http://posttestserver.com/post.php");
-				 StringEntity se = new StringEntity(testComplete.toString()+data);
+				 HttpPost post = new HttpPost(report);
+				 StringEntity se = new StringEntity(testComplete.toString());
                  se.setContentType(new BasicHeader(HTTP.CONTENT_TYPE, "application/json"));
                  post.setEntity(se);
                  response = client.execute(post);
