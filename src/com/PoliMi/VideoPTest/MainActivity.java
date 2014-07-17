@@ -562,7 +562,7 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
 	    	try {
 	    		testComplete.put("status", "complete");
 				testComplete.put("Battery Level", batteryPct);
-				testComplete.put("imei","imei"); //passing a unique identifier, we use IMEI in this case
+				testComplete.put("imei",imei); //passing a unique identifier, we use IMEI in this case
 				testComplete.put("brightness", brightness); //passing actual brightness
 				testComplete.put("voltage", voltage);
 				testComplete.put("temperature",temperature);
