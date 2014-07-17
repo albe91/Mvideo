@@ -5,10 +5,17 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
-import java.net.URL;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.apache.http.HttpResponse;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.StringEntity;
+import org.apache.http.impl.client.DefaultHttpClient;
+import org.apache.http.message.BasicHeader;
+import org.apache.http.params.HttpConnectionParams;
+import org.apache.http.protocol.HTTP;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -33,7 +40,6 @@ import android.support.v4.app.Fragment;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.ActionBarActivity;
 import android.telephony.TelephonyManager;
-import android.text.Editable;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -231,9 +237,11 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
 		Context context = getApplicationContext();
 		Pattern p = Pattern.compile(".*?youtube\\.(com|it|fr).*");
 		Matcher m = p.matcher(url);
-		if(m.matches()) 
+		if(m.matches()) {
 			//instantiate the youtube activity
-			;
+			Intent youtubeIntent = new Intent(this, YoutubePlayerActivity.class);
+			youtubeIntent.putExtra("url",url);
+			startActivityForResult(youtubeIntent,0);}
 		else{//instantiate the mediaPlayerActivity
         Intent mediaPlayerIntent = new Intent(this, MediaPlayerActivity.class);
         mediaPlayerIntent.putExtra("url", url);
@@ -532,6 +540,7 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
 	    	String imei = null;
 
 	    	float batteryPct = (level * 100)/ scale;
+	    	float brightness =  (getWindow().getAttributes().screenBrightness / 255) * 100;
 	    	
 	    	//Getting device's IMEI
 	    	TelephonyManager mngr = (TelephonyManager)getSystemService(Context.TELEPHONY_SERVICE);
@@ -548,31 +557,35 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
 	          while ((line = reader.readLine())!= null) {
 	            output.append(line + "\n");
 	          }
+	          
 	        } catch (Exception e) {
 	          e.printStackTrace();
-	        }
-	        String response = output.toString();	       
-	    	
+	        }	        	       
+	        String data = output.toString();
+	        
 	    	//Creates the json file to send back to server
 	    	JSONObject testComplete = new JSONObject();
 	    	try {
 	    		testComplete.put("status", "complete");
 				testComplete.put("Battery Level", batteryPct);
 				testComplete.put("imei","imei"); //passing a unique identifier, we use IMEI in this case
-				testComplete.put("birghtness", getWindow().getAttributes().screenBrightness); //passing actual brightness
+				testComplete.put("brightness", brightness); //passing actual brightness
 							
 			} catch (JSONException e) {
 				e.printStackTrace();
 			}
 	    	
-	    	//setting up http connection. still need to figure out how to send the json
+	    	//setting up http connection and sending test info to server
+	    	HttpClient client = new DefaultHttpClient();
+            HttpConnectionParams.setConnectionTimeout(client.getParams(), 10000); //Timeout Limit
+            HttpResponse response;	    	
 	    	HttpURLConnection con;
 			try {
-				con = (HttpURLConnection) (new URL(report)).openConnection();
-				con.setRequestMethod("POST");
-		    	con.setDoInput(true);
-		    	con.setDoOutput(true);
-		    	con.connect();
+				 HttpPost post = new HttpPost("http://posttestserver.com/post.php");
+				 StringEntity se = new StringEntity(testComplete.toString()+data);
+                 se.setContentType(new BasicHeader(HTTP.CONTENT_TYPE, "application/json"));
+                 post.setEntity(se);
+                 response = client.execute(post);
 			} catch (MalformedURLException e) {				
 				e.printStackTrace();
 			} catch (IOException e) {
