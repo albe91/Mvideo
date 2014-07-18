@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
+import java.util.LinkedHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -34,6 +35,7 @@ import android.media.MediaPlayer;
 import android.media.MediaPlayer.OnPreparedListener;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.os.AsyncTask;
 import android.os.BatteryManager;
@@ -99,6 +101,7 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
 	private int brightness;
 	private int signal_strength;
 	private int volume;
+	private int batteryLevel;
 	private String started;
 	private String completed;
 	private String created_at;
@@ -124,9 +127,9 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
         Context context = getApplicationContext();        
         IntentFilter ifilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
         Intent batteryStatus = context.registerReceiver(null, ifilter);        
-        int level = batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
+        batteryLevel = batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
         int scale = batteryStatus.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
-        float batteryPct = (level * 100) / (float)scale;
+        float batteryPct = (batteryLevel * 100) / (float)scale;
         
         // Are we charging / charged?
         int status = batteryStatus.getIntExtra(BatteryManager.EXTRA_STATUS, -1);
@@ -138,14 +141,14 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
     	}
     	//if we are here we are charging, so we have to check if the battery is above or under 50%
     	//if under 50% wait for reaching the 80%
-    	else if(batteryPct <= 50){    		
-    		while(batteryPct<=80){
-            	batteryStatus = context.registerReceiver(null, ifilter);        
-                level = batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
-                scale = batteryStatus.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
-                batteryPct = (level * 100) / (float)scale;
-            		}        	
-        }
+//    	else if(batteryPct <= 50){    		
+//    		while(batteryPct<=80){
+//            	batteryStatus = context.registerReceiver(null, ifilter);        
+//                batteryLevel = batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
+//                scale = batteryStatus.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
+//                batteryPct = (batteryLevel * 100) / (float)scale;
+//            		}        	
+//        }
     	//if above 50% we unplug the usb and we cna start with testing
     	else unPlugUsb();
     }
@@ -355,11 +358,14 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
                         signal_strength = dataJson.getInt(TAG_SIGNAL_STR);
                         volume = dataJson.getInt(TAG_VOLUME);
                         max_volume = audioManager.getStreamMaxVolume(audioManager.STREAM_MUSIC);//getting the max possible value of volume 
-                    	volume = (volume * max_volume / 100);//converting the volume from 5 to a value from 0 to max_value
+                    	volume = (volume * max_volume / 100);//converting the volume from % to a value from 0 to max_value
                         started = dataJson.getString(TAG_STARTED);
                         completed = dataJson.getString(TAG_COMPLETED);
                         created_at = dataJson.getString(TAG_CREATED_AT);
                         updated_at = dataJson.getString(TAG_UPDATED_AT);
+                        IntentFilter ifilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
+                        Intent batteryStatus = getApplicationContext().registerReceiver(null, ifilter);        
+                        batteryLevel = batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
                     
                 } catch (JSONException e) {
                     e.printStackTrace();
@@ -534,17 +540,78 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
 		}
 		
 		@Override
-		protected Void doInBackground(Void... arg0){
+		protected Void doInBackground(Void... arg0) {
 			Context context = getApplicationContext();
+			
+			//Getting all info about the battery via Intent receiver
 	    	IntentFilter ifilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
 	    	Intent batteryStatus = context.registerReceiver(null, ifilter);
 	    	int level = batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
 	    	int scale = batteryStatus.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
 	    	int voltage = batteryStatus.getIntExtra(BatteryManager.EXTRA_VOLTAGE, -1);
 	    	int temperature = batteryStatus.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, -1);
+	    	int tech = batteryStatus.getIntExtra(BatteryManager.EXTRA_TECHNOLOGY, -1);
+	    	int health = batteryStatus.getIntExtra(BatteryManager.EXTRA_HEALTH, -1);
 	    	String imei = null;
-
+	    	
+	    	//Getting info about network(WIFI and 3G)
+	    	WifiManager wifiManager = (WifiManager) getSystemService(Context.WIFI_SERVICE);//wifi manager to check if wifi in enabled
+	    	ConnectivityManager connManager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);//mobile network manager
+	    	String wifi_status = null, mobile_status = null;
+	    	String wifiSSID = null, mobileType = null;
+	    	int wifiSpeed = -1;
+	    	int wifiStrength = -1, mobileStrength = -1;
+	    	if (wifiManager.isWifiEnabled()){
+	    		NetworkInfo mWifi = connManager.getNetworkInfo(ConnectivityManager.TYPE_WIFI);//wifi network info to get wifi status
+	    		WifiInfo wifiInfo = wifiManager.getConnectionInfo();//wifi connection info to retrieve informations like SSID & speed
+	    		if (mWifi.isConnected()) 
+	    			wifi_status = "Connected";
+	    		else 
+	    			wifi_status = "Not connected";
+	    		wifiSSID = wifiInfo.getSSID();
+	    		wifiSpeed = wifiInfo.getLinkSpeed();
+	    		wifiStrength = WifiManager.calculateSignalLevel(wifiInfo.getRssi(), 100);//calculating signal level on a 100 scale
+	    	}
+	    	else{	    	
+	    		NetworkInfo mMobile = connManager.getNetworkInfo(ConnectivityManager.TYPE_MOBILE);//mobile network info to get mobile status
+	    		
+	    		if(mMobile.isConnected())
+	    			mobile_status = "Connected";
+	    		else
+	    			mobile_status = "Not connected";
+	    		
+	    		TelephonyManager teleMan = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
+	    	    int networkType = teleMan.getNetworkType();
+	    	    switch (networkType) {
+	    	        case TelephonyManager.NETWORK_TYPE_1xRTT: mobileType = "1xRTT";
+	    	        case TelephonyManager.NETWORK_TYPE_CDMA: mobileType = "CDMA";
+	    	        case TelephonyManager.NETWORK_TYPE_EDGE: mobileType = "EDGE";
+	    	        case TelephonyManager.NETWORK_TYPE_EHRPD: mobileType = "eHRPD";
+	    	        case TelephonyManager.NETWORK_TYPE_EVDO_0: mobileType = "EVDO rev. 0";
+	    	        case TelephonyManager.NETWORK_TYPE_EVDO_A: mobileType = "EVDO rev. A";
+	    	        case TelephonyManager.NETWORK_TYPE_EVDO_B: mobileType = "EVDO rev. B";
+	    	        case TelephonyManager.NETWORK_TYPE_GPRS: mobileType = "GPRS";
+	    	        case TelephonyManager.NETWORK_TYPE_HSDPA: mobileType = "HSDPA";
+	    	        case TelephonyManager.NETWORK_TYPE_HSPA: mobileType = "HSPA";
+	    	        case TelephonyManager.NETWORK_TYPE_HSPAP: mobileType = "HSPA+";
+	    	        case TelephonyManager.NETWORK_TYPE_HSUPA: mobileType = "HSUPA";
+	    	        case TelephonyManager.NETWORK_TYPE_IDEN: mobileType = "iDen";
+	    	        case TelephonyManager.NETWORK_TYPE_LTE: mobileType = "LTE";
+	    	        case TelephonyManager.NETWORK_TYPE_UMTS: mobileType = "UMTS";
+	    	        case TelephonyManager.NETWORK_TYPE_UNKNOWN: mobileType = "Unknown";
+	    	    }
+	    	    
+	    	}   	
+	 
+	    	//Getting audio volume
+	    	AudioManager am = (AudioManager) getSystemService(AUDIO_SERVICE);
+	    	int volume_level= am.getStreamVolume(AudioManager.STREAM_MUSIC);
+	    	int max_volume = am.getStreamMaxVolume(am.STREAM_MUSIC);//getting the max possible value of volume
+	    	volume_level = (volume_level * 100 / max_volume);//converting the volume from % to a value from 0 to max_value
+	    	
 	    	float batteryPct = (level * 100)/ scale;
+	    	
+	    	//getting brightness
 	    	float brightness=0;
 			try {
 				brightness = android.provider.Settings.System.getInt(getContentResolver(), android.provider.Settings.System.SCREEN_BRIGHTNESS) * 100 / 255;//getting battery lvl and calculating % of it
@@ -557,19 +624,26 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
 	    	TelephonyManager mngr = (TelephonyManager)getSystemService(Context.TELEPHONY_SERVICE);
 	    	imei = mngr.getDeviceId();   
 	        
-	    	//Creates the json file to send back to server
-	    	JSONObject testComplete = new JSONObject();
-	    	try {
-	    		testComplete.put("status", "complete");
-				testComplete.put("Battery Level", batteryPct);
-				testComplete.put("imei",imei); //passing a unique identifier, we use IMEI in this case
-				testComplete.put("brightness", brightness); //passing actual brightness
-				testComplete.put("voltage", voltage);
-				testComplete.put("temperature",temperature);
-							
-			} catch (JSONException e) {
-				e.printStackTrace();
-			}
+	    	//We now use a linkedHashMap to keep the attributes order, then we create a json object based on that hashmap
+	    	LinkedHashMap<String, Comparable> testComplete = new LinkedHashMap<String, Comparable>();
+	    	
+	    	testComplete.put("status", "complete");				
+			testComplete.put("imei",imei); //passing a unique identifier, we use IMEI in this case
+			testComplete.put("brightness", brightness); //passing actual brightness
+			testComplete.put("volume", volume_level);
+			testComplete.put("battery used", (batteryLevel - batteryPct));
+			testComplete.put("voltage", voltage);
+			testComplete.put("temperature",temperature);
+			testComplete.put("health", health);
+			testComplete.put("technology", tech);
+			testComplete.put("wifi status", wifi_status);
+			testComplete.put("SSID", wifiSSID);
+			testComplete.put("speed", wifiSpeed);
+			testComplete.put("signal strength", wifiStrength);
+			testComplete.put("mobile status", mobile_status);
+			testComplete.put("mobile network type", mobileType);
+			
+			JSONObject testReport = new JSONObject(testComplete);
 	    	
 	    	//setting up http connection and sending test info to server
 	    	HttpClient client = new DefaultHttpClient();
@@ -577,7 +651,7 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
             HttpResponse response;	   
 			try {
 				 HttpPost post = new HttpPost(report);
-				 StringEntity se = new StringEntity(testComplete.toString());
+				 StringEntity se = new StringEntity(testReport.toString());
                  se.setContentType(new BasicHeader(HTTP.CONTENT_TYPE, "application/json"));
                  post.setEntity(se);
                  response = client.execute(post);
