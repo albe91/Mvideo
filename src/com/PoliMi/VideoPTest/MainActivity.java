@@ -81,14 +81,14 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
     private static final String TAG_ID = "id";
     private static final String TAG_DATA = "data";
     private static final String TAG_URL = "media";
-    private static final String TAG_LENGTH = "max_length";
+    private static final String TAG_LENGTH = "max_length = 0";
     private static final String TAG_BRIGHTNESS = "brightness";
     private static final String TAG_NETWORK = "network";
     private static final String TAG_SIGNAL_STR = "signal_strenght";
     private static final String TAG_VOLUME = "volume";
     private static final String TAG_STARTED = "started";
     private static final String TAG_COMPLETED = "completed";
-    private static final String TAG_CREATED_AT = "create_at";
+    private static final String TAG_CREATED_AT = "created_at";
     private static final String TAG_UPDATED_AT = "updated_at";
     private static final String TAG_STATUS = "status";
 
@@ -107,6 +107,7 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
 	private String created_at;
 	private String updated_at;
 	private String status="ok";
+	private int max_length;
 
 	
     @Override
@@ -251,6 +252,7 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
 		else{//instantiate the mediaPlayerActivity
         Intent mediaPlayerIntent = new Intent(this, MediaPlayerActivity.class);
         mediaPlayerIntent.putExtra("url", url);
+        mediaPlayerIntent.putExtra("max_length", max_length);
         startActivityForResult(mediaPlayerIntent,0);    
 		}
 		
@@ -363,6 +365,7 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
                         completed = dataJson.getString(TAG_COMPLETED);
                         created_at = dataJson.getString(TAG_CREATED_AT);
                         updated_at = dataJson.getString(TAG_UPDATED_AT);
+                        max_length = dataJson.getInt(TAG_LENGTH);
                         IntentFilter ifilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
                         Intent batteryStatus = getApplicationContext().registerReceiver(null, ifilter);        
                         batteryLevel = batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);

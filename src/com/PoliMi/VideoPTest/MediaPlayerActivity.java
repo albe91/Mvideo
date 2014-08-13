@@ -1,33 +1,24 @@
 package com.PoliMi.VideoPTest;
 
-import java.net.HttpURLConnection;
-import java.net.URL;
-
-import org.json.JSONException;
-import org.json.JSONObject;
-
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.ProgressDialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.media.MediaPlayer.OnCompletionListener;
 import android.media.MediaPlayer.OnPreparedListener;
-import android.os.BatteryManager;
 import android.os.Bundle;
+import android.os.CountDownTimer;
 import android.os.Handler;
-import android.telephony.TelephonyManager;
 import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
+import android.widget.Toast;
 
-import com.PoliMi.VideoPTest.R;
 import com.PoliMi.VideoPTest.util.SystemUiHider;
 
 
@@ -44,6 +35,7 @@ public class MediaPlayerActivity extends Activity implements SurfaceHolder.Callb
 	private MediaPlayer mediaPlayer;
 	AlertDialog dialog;
 	private String videoUrl;
+	private int max_length;
 	
 	/**
 	 * Whether or not the system UI should be auto-hidden after
@@ -79,6 +71,7 @@ public class MediaPlayerActivity extends Activity implements SurfaceHolder.Callb
 		setContentView(R.layout.activity_media_player);
 		Intent intent = getIntent();
 		videoUrl = intent.getExtras().getString("url");
+		max_length = intent.getExtras().getInt("max_length");
 		vidSurface = (SurfaceView) findViewById(R.id.surfView);
 		vidHolder = vidSurface.getHolder();
 		vidHolder.addCallback(this);		
@@ -118,8 +111,7 @@ public class MediaPlayerActivity extends Activity implements SurfaceHolder.Callb
     private BroadcastReceiver mBatInfoReceiver = new BroadcastReceiver(){
         @Override
         public void onReceive(Context context, Intent intent) {
-            int level = intent.getIntExtra("level", 0);
-         // CONNECT TO SERVER AND ASK FOR POWER RECONNECTION
+            int level = intent.getIntExtra("level", 0);         
             Intent returnIntent = new Intent();
             MediaPlayerActivity.this.setResult(RESULT_CANCELED,returnIntent);
             finish();
@@ -131,6 +123,25 @@ public class MediaPlayerActivity extends Activity implements SurfaceHolder.Callb
 		
 		dialog.dismiss();
 		mediaPlayer.start();
+		if (max_length != 0){
+			new CountDownTimer(max_length, 1000) {
+
+			     public void onTick(long millisUntilFinished) {
+			        
+			     }
+	
+			     public void onFinish() {
+			    	 Intent returnIntent = new Intent();
+			    	 returnIntent.putExtra("result","ok");
+			    	 MediaPlayerActivity.this.setResult(RESULT_OK,returnIntent);//tells previous activity the test was completed correctly
+			         Context context = getApplicationContext();
+			         CharSequence text = "Max video length reached";
+			         int duration = Toast.LENGTH_LONG;
+			         Toast.makeText(context, text, duration).show();
+			         finish();
+			     }
+			}.start();
+		}
 	}
 
 	@Override
@@ -202,7 +213,8 @@ public class MediaPlayerActivity extends Activity implements SurfaceHolder.Callb
 
 	@Override
 	public void surfaceDestroyed(SurfaceHolder arg0) {
-		// TODO Auto-generated method stub		
+		// TODO Auto-generated method stub	
+		mediaPlayer.stop();
 	}
 	
 	@Override
