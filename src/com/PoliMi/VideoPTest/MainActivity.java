@@ -1,9 +1,6 @@
 package com.PoliMi.VideoPTest;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.util.LinkedHashMap;
 import java.util.regex.Matcher;
@@ -214,7 +211,8 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
             new AlertDialog.Builder(context)
 	        .setTitle("BATTERY IS TOO DAMN LOW!")
 	        .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
-	            public void onClick(DialogInterface dialog, int which) { 
+	            @Override
+				public void onClick(DialogInterface dialog, int which) { 
 	            	dialog.dismiss();
 	            	}
 	            })
@@ -248,6 +246,7 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
 			//instantiate the youtube activity
 			Intent youtubeIntent = new Intent(this, YoutubePlayerActivity.class);
 			youtubeIntent.putExtra("url",url);
+			youtubeIntent.putExtra("max_length", max_length);
 			startActivityForResult(youtubeIntent,0);}
 		else{//instantiate the mediaPlayerActivity
         Intent mediaPlayerIntent = new Intent(this, MediaPlayerActivity.class);
@@ -359,7 +358,7 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
                     	brightness = (brightness * 255 / 100);
                         signal_strength = dataJson.getInt(TAG_SIGNAL_STR);
                         volume = dataJson.getInt(TAG_VOLUME);
-                        max_volume = audioManager.getStreamMaxVolume(audioManager.STREAM_MUSIC);//getting the max possible value of volume 
+                        max_volume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC);//getting the max possible value of volume 
                     	volume = (volume * max_volume / 100);//converting the volume from % to a value from 0 to max_value
                         started = dataJson.getString(TAG_STARTED);
                         completed = dataJson.getString(TAG_COMPLETED);
@@ -398,7 +397,8 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
     	        .setTitle("An error as occourred")
     	        .setMessage("The server URL is invalid or incorrect. Please go to settings and enter a valid one")
     	        .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
-    	            public void onClick(DialogInterface dialog, int which) { 
+    	            @Override
+					public void onClick(DialogInterface dialog, int which) { 
     	            	dialog.dismiss();
     	            	}
     	            })
@@ -610,7 +610,7 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
 	    	//Getting audio volume
 	    	AudioManager am = (AudioManager) getSystemService(AUDIO_SERVICE);
 	    	int volume_level= am.getStreamVolume(AudioManager.STREAM_MUSIC);
-	    	int max_volume = am.getStreamMaxVolume(am.STREAM_MUSIC);//getting the max possible value of volume
+	    	int max_volume = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC);//getting the max possible value of volume
 	    	volume_level = (volume_level * 100 / max_volume);//converting the volume from % to a value from 0 to max_value
 	    	
 	    	float batteryPct = (level * 100)/ scale;

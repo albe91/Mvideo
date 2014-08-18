@@ -126,11 +126,13 @@ public class MediaPlayerActivity extends Activity implements SurfaceHolder.Callb
 		if (max_length != 0){
 			new CountDownTimer(max_length, 1000) {
 
-			     public void onTick(long millisUntilFinished) {
+			     @Override
+				public void onTick(long millisUntilFinished) {
 			        
 			     }
 	
-			     public void onFinish() {
+			     @Override
+				public void onFinish() {
 			    	 Intent returnIntent = new Intent();
 			    	 returnIntent.putExtra("result","ok");
 			    	 MediaPlayerActivity.this.setResult(RESULT_OK,returnIntent);//tells previous activity the test was completed correctly
