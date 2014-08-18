@@ -366,6 +366,7 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
                         created_at = dataJson.getString(TAG_CREATED_AT);
                         updated_at = dataJson.getString(TAG_UPDATED_AT);
                         max_length = dataJson.getInt(TAG_LENGTH);
+                        max_length = max_length * 1000;//conversion from seconds to milliseconds
                         IntentFilter ifilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
                         Intent batteryStatus = getApplicationContext().registerReceiver(null, ifilter);        
                         batteryLevel = batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
