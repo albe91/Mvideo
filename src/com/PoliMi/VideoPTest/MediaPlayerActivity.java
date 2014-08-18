@@ -6,6 +6,7 @@ import android.app.ProgressDialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.ActivityInfo;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.media.MediaPlayer.OnCompletionListener;
@@ -69,6 +70,7 @@ public class MediaPlayerActivity extends Activity implements SurfaceHolder.Callb
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_media_player);
+		this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
 		Intent intent = getIntent();
 		videoUrl = intent.getExtras().getString("url");
 		max_length = intent.getExtras().getInt("max_length");

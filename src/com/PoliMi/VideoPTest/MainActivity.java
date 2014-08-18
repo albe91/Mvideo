@@ -244,6 +244,7 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
 		Matcher m = p.matcher(url);
 		if(m.matches()) {
 			//instantiate the youtube activity
+			url = url.substring(32, 43);
 			Intent youtubeIntent = new Intent(this, YoutubePlayerActivity.class);
 			youtubeIntent.putExtra("url",url);
 			youtubeIntent.putExtra("max_length", max_length);

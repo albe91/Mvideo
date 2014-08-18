@@ -46,7 +46,7 @@ public class YoutubePlayerActivity extends YouTubeFailureRecoveryActivity implem
   private YouTubePlayer player;
   private View otherViews;
   
-  private String videoUrl;
+  private String videoCode;
   private int max_length;
 
   private boolean fullscreen;
@@ -63,7 +63,7 @@ public class YoutubePlayerActivity extends YouTubeFailureRecoveryActivity implem
     playerView.initialize(DeveloperKey.DEVELOPER_KEY, this);
     
     Intent intent = getIntent();
-    videoUrl = intent.getExtras().getString("url");
+    videoCode = intent.getExtras().getString("url");
 	max_length = intent.getExtras().getInt("max_length");
 	
     doLayout();
@@ -83,7 +83,7 @@ public class YoutubePlayerActivity extends YouTubeFailureRecoveryActivity implem
     player.setOnFullscreenListener(this);
     if (!wasRestored) {
       player.setFullscreen(!fullscreen);
-      player.cueVideo("avP5d16wEp0");
+      player.cueVideo(videoCode);
     }
   }
 
