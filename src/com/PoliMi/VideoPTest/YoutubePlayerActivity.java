@@ -7,6 +7,7 @@ import static android.view.ViewGroup.LayoutParams.WRAP_CONTENT;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.ActivityInfo;
 import android.content.res.Configuration;
 import android.os.Build;
@@ -67,12 +68,17 @@ public class YoutubePlayerActivity extends YouTubeFailureRecoveryActivity implem
 	max_length = intent.getExtras().getInt("max_length");
 	
     doLayout();
+    
+  //Initializing receiver for low battery
+  		registerReceiver(mBatInfoReceiver, new IntentFilter(
+          	    Intent.ACTION_BATTERY_LOW));
   }
 
   @Override
   public void onInitializationSuccess(YouTubePlayer.Provider provider, YouTubePlayer player,
       boolean wasRestored) {
     this.player = player;
+    
     /** add listeners to YouTubePlayer instance **/
 	player.setPlayerStateChangeListener(playerStateChangeListener);
 	player.setPlaybackEventListener(playbackEventListener);
@@ -178,6 +184,7 @@ public class YoutubePlayerActivity extends YouTubeFailureRecoveryActivity implem
 
 		@Override
 		public void onPlaying() {
+			//THe video must end if the timer reaches 0
 			if (max_length != 0){
 				new CountDownTimer(max_length, 1000) {
 
@@ -227,6 +234,7 @@ public class YoutubePlayerActivity extends YouTubeFailureRecoveryActivity implem
 
 		@Override
 		public void onLoaded(String arg0) {
+			//once the video is loaded,we can play it
 			player.play();
 		}
 
@@ -259,7 +267,7 @@ public class YoutubePlayerActivity extends YouTubeFailureRecoveryActivity implem
         }	        
     };
     
-  //Disable back press button
+  //Disable back press button to avoid unwanted interruption to playback during tests
   	@Override
   	public void onBackPressed() {
   	}

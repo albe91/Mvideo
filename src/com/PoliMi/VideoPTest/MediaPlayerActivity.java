@@ -6,6 +6,7 @@ import android.app.ProgressDialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.ActivityInfo;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
@@ -104,9 +105,9 @@ public class MediaPlayerActivity extends Activity implements SurfaceHolder.Callb
 			}
 		});	
 
-//		//Initializing receiver for low battery
-//		registerReceiver(mBatInfoReceiver, new IntentFilter(
-//        	    Intent.ACTION_BATTERY_LOW));
+		//Initializing receiver for low battery
+		registerReceiver(mBatInfoReceiver, new IntentFilter(
+        	    Intent.ACTION_BATTERY_LOW));
 	}
 	
 	 //Receiver for low battery state
