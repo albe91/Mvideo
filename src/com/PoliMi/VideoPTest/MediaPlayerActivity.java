@@ -1,5 +1,12 @@
 package com.PoliMi.VideoPTest;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.LinkedHashMap;
+import java.util.Locale;
+
+import org.json.JSONObject;
+
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.ProgressDialog;
@@ -8,13 +15,17 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.ActivityInfo;
+import android.content.res.Resources;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.media.MediaPlayer.OnCompletionListener;
 import android.media.MediaPlayer.OnPreparedListener;
+import android.os.AsyncTask;
+import android.os.BatteryManager;
 import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.os.Handler;
+import android.util.Log;
 import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
@@ -38,6 +49,17 @@ public class MediaPlayerActivity extends Activity implements SurfaceHolder.Callb
 	AlertDialog dialog;
 	private String videoUrl;
 	private int max_length;
+	
+	private checkBattery batteryAsync;
+	
+	private boolean controlPlaying;
+	private boolean controlAsync;
+	
+	//Variable for resources
+	Resources res;
+	
+	//This is the hashmap used to save the battery changes. Placed here in order to send it back to previous activity
+	LinkedHashMap<String, String> batteryLog = new LinkedHashMap<String, String>();
 	
 	/**
 	 * Whether or not the system UI should be auto-hidden after
@@ -70,6 +92,7 @@ public class MediaPlayerActivity extends Activity implements SurfaceHolder.Callb
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
+		res = getResources();
 		setContentView(R.layout.activity_media_player);
 		this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
 		Intent intent = getIntent();
@@ -126,6 +149,9 @@ public class MediaPlayerActivity extends Activity implements SurfaceHolder.Callb
 		
 		dialog.dismiss();
 		mediaPlayer.start();
+		controlPlaying = true;
+		batteryAsync = new checkBattery();
+		batteryAsync.execute();
 		if (max_length != 0){
 			new CountDownTimer(max_length, 1000) {
 
@@ -136,14 +162,21 @@ public class MediaPlayerActivity extends Activity implements SurfaceHolder.Callb
 	
 			     @Override
 				public void onFinish() {
-			    	 Intent returnIntent = new Intent();
-			    	 returnIntent.putExtra("result","ok");
-			    	 MediaPlayerActivity.this.setResult(RESULT_OK,returnIntent);//tells previous activity the test was completed correctly
-			         Context context = getApplicationContext();
-			         CharSequence text = "Max video length reached";
-			         int duration = Toast.LENGTH_LONG;
-			         Toast.makeText(context, text, duration).show();
-			         finish();
+					controlPlaying = false;// we declare the video has done
+											// playing by modifying control
+											// value
+					while (controlAsync == true) {
+					}
+					JSONObject temp = new JSONObject(batteryLog);
+					String batteryResults = temp.toString();
+					Intent returnIntent = new Intent();
+					returnIntent.putExtra("batteryLog", batteryResults);
+					MediaPlayerActivity.this.setResult(RESULT_OK, returnIntent);// tells previous activity the test was complted correctly			
+					Context context = getApplicationContext();
+					CharSequence text = "Max video length reached";
+					int duration = Toast.LENGTH_LONG;
+					Toast.makeText(context, text, duration).show();
+					finish();
 			     }
 			}.start();
 		}
@@ -224,12 +257,65 @@ public class MediaPlayerActivity extends Activity implements SurfaceHolder.Callb
 	
 	@Override
 	public void onCompletion(MediaPlayer mp){
+		controlPlaying = false;//we declare the video has done playing by modifying control value
+		while(controlAsync == true){}
+		JSONObject temp = new JSONObject(batteryLog);
+		String batteryResults = temp.toString();
 		Intent returnIntent = new Intent();
-    	returnIntent.putExtra("result","ok");
+    	returnIntent.putExtra("batteryLog", batteryResults);
         MediaPlayerActivity.this.setResult(RESULT_OK,returnIntent);//tells previous activity the test was completed correctly
 		finish();
 		
 	}
+	
+	//This asynctask registers every battery changes and saves them with relative timestamp
+	private class checkBattery extends AsyncTask<Void, Void, Void> {
+      	
+		float oldBatteryLvl = 0;
+		String dateFormat ="yyyy-MM-dd HH:mm" ;
+			
+		@Override
+		protected void onPreExecute() {
+			super.onPreExecute();
+			controlAsync = true;
+		}
+
+		@Override
+		protected Void doInBackground(Void... arg0) {
+			while(mediaPlayer.isPlaying()){
+				
+				IntentFilter ifilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
+				Intent batteryStatus = getApplicationContext().registerReceiver(null, ifilter);        
+				int level = batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
+				int scale = batteryStatus.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
+				float newBatteryLvl = (level * 100) / (float)scale;
+				
+				//We will now have to check if battery level is the same as the old one. if so, we do not save it, on the contrary yes.
+				if (!(newBatteryLvl == oldBatteryLvl)){
+					//Getting the timestamp
+					SimpleDateFormat sdf = new SimpleDateFormat(dateFormat, Locale.US);
+					Date date = new Date();
+					//We use an hashmap to save all the couples timestamp/BatteryLvl					
+					batteryLog.put(sdf.format(date),String.valueOf(newBatteryLvl));		
+				}
+				
+				try {
+					Thread.sleep(res.getInteger(R.integer.sleepMsBatteryCheck));
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}				
+			}
+			controlAsync = false; 
+			return null;
+		}
+
+		@Override
+		protected void onPostExecute(Void result) {
+			
+		}
+
+	}
+	
 	
 	//Disable back press button
 	@Override

@@ -27,6 +27,7 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.res.Resources;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.media.MediaPlayer.OnPreparedListener;
@@ -60,7 +61,7 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
 
 
 	private TextView textView;
-	private String server_url="http://192.168.1.205";
+	private String server_url="http://git.rmdesign.it:8080";
 	private String test_url= server_url + "/test";
 	private String plugUsbURL = server_url+"/power/on";
 	private String unPlugUsb = server_url+"/power/off";
@@ -101,6 +102,12 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
 	private String updated_at;
 	private String status="ok";
 	private int max_length;
+	private int voltage_before;
+	
+	String batteryLog;
+	
+	//Variable for resources
+	Resources res;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -111,6 +118,7 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
 		//Initializing receiver for low battery
 		registerReceiver(mBatInfoReceiver, new IntentFilter(
 				Intent.ACTION_BATTERY_LOW));
+		res = getResources();
 	}
 
 	@Override
@@ -129,16 +137,16 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
 		int status = batteryStatus.getIntExtra(BatteryManager.EXTRA_STATUS, -1);
 		boolean isCharging = status == BatteryManager.BATTERY_STATUS_CHARGING;
 
-		//We firt check if we are not charging. If so, we only need to see if we are above or under 50%
+		//We firt check if we are not charging. If so, we only need to see if we are above or under 14%
 		if (isCharging == false){
-			if(batteryPct <= 50)
-				new plugUsb().execute(); //if we are not charging and the battery lvl is under the 50% we ask for power
+			if(batteryPct <= 14)
+				new plugUsb().execute(); //if we are not charging and the battery lvl is under the 14% we ask for power
 		}
 		//This else will be triggered if we are charging, so we have to check if the battery is above or under 50%		
 		else
 		{ 
-			if(batteryPct <= 50)    	
-				//if under 50% wait for reaching the 80%
+			if(batteryPct < 80)    	
+				//if under 80% wait for reaching the 80%
 				new charging().execute();
 			else 
 				new unPlugUsb().execute();
@@ -262,9 +270,14 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
 	protected void onActivityResult(int requestCode, int resultCode, Intent data)
 	{
 		super.onActivityResult(requestCode, resultCode, data);
+		//We take the batteryLog
 		if (resultCode == RESULT_CANCELED) 	
 			new plugUsb().execute();
-		else  new sendReport().execute();
+		else  
+			{	
+				batteryLog = new String(data.getStringExtra("batteryLog"));
+				new sendReport().execute();
+			}
 
 	}
 
@@ -373,6 +386,10 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
 							IntentFilter ifilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
 							Intent batteryStatus = getApplicationContext().registerReceiver(null, ifilter);        
 							batteryLevel = batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
+							voltage_before = batteryStatus.getIntExtra(BatteryManager.EXTRA_VOLTAGE, -1);
+							//We must save the actual battery info into the GlobalVariable class in order not to loose it when video activity is called
+							globalVariables.setStartingBatteryLvl(batteryLevel);
+							globalVariables.setVoltage_before(voltage_before);							
 							
 							//Marking test as started to the server
 							LinkedHashMap<String, Comparable> testComplete = new LinkedHashMap<String, Comparable>();
@@ -454,7 +471,6 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
 
 	//Running streaming test
 	//Setting brightness, network and volume first and then streaming the video
-	//tested and working
 	public void runTest(View view){
 
 		AlertDialog pDialog = null;
@@ -547,6 +563,13 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
 				level = batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
 				int scale = batteryStatus.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
 				batteryPct = (level * 100) / (float)scale;
+				//This sleep is made in order to avoid too much battery consumption during charge
+				try {
+					Thread.sleep(res.getInteger(R.integer.sleepMsCharge));
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
 			}
 			return null; 
 		}
@@ -721,14 +744,14 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
 			//Getting test id by the globalVariables class
 			GlobalVariables globalVariables = (GlobalVariables) getApplication();
 
-			//We now use a linkedHashMap to keep the attributes order, then we create a json object based on that hashmap
+			//We now use a linkedHashMap to create a json object based on that hashmap
 			LinkedHashMap<String, Comparable> testComplete = new LinkedHashMap<String, Comparable>();
 
 			testComplete.put("status", "complete");				
 			testComplete.put("imei",imei); //passing a unique identifier, we use IMEI in this case
 			testComplete.put("brightness", brightness); //passing actual brightness
 			testComplete.put("volume", volume_level);
-			testComplete.put("battery used", (batteryLevel - batteryPct));
+			testComplete.put("battery used", (globalVariables.getStartingBatteryLvl() - batteryPct));
 			testComplete.put("voltage", voltage);
 			testComplete.put("temperature",temperature);
 			testComplete.put("health", health);
@@ -739,8 +762,9 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
 			testComplete.put("signal strength", wifiStrength);
 			testComplete.put("mobile status", mobile_status);
 			testComplete.put("mobile network type", mobileType);
-			testComplete.put("test_id", globalVariables.getID() );
-
+			testComplete.put("test_id", globalVariables.getID());
+			testComplete.put("voltage_before", globalVariables.getVoltage_before());
+			testComplete.put("data", batteryLog);
 
 			JSONObject testReport = new JSONObject(testComplete);
 
@@ -806,6 +830,13 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
 				level = batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
 				int scale = batteryStatus.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
 				batteryPct = (level * 100) / (float)scale;
+				//This sleep is made in order to avoid too much battery consumption during charge
+				try {
+					Thread.sleep(res.getInteger(R.integer.sleepMsCharge));
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
 			}
 			return null; 
 		}
