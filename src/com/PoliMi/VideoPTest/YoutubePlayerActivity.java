@@ -64,10 +64,6 @@ public class YoutubePlayerActivity extends YouTubeFailureRecoveryActivity implem
 
   private boolean fullscreen;
   
-  //This variable is used to control either if the video is running of not(since isPlayer method seems to be unreliable)
-  private boolean controlPlaying;
-  private boolean controlAsync;
-  
   private checkBattery batteryAsync;
   
 //Variable for resources
@@ -178,6 +174,7 @@ public class YoutubePlayerActivity extends YouTubeFailureRecoveryActivity implem
       }
       setControlsEnabled();
     }
+    
   }
 
   private void setControlsEnabled() {
@@ -200,7 +197,7 @@ public class YoutubePlayerActivity extends YouTubeFailureRecoveryActivity implem
 	  
 		@Override
 		public void onBuffering(boolean arg0) {
-
+			
 		}
 
 		@Override
@@ -221,11 +218,7 @@ public class YoutubePlayerActivity extends YouTubeFailureRecoveryActivity implem
 		
 				     @Override
 					public void onFinish() {
-						controlPlaying = false;// we declare the video has done
-												// playing by modifying control
-												// value
-						while (controlAsync == true) {
-						}
+						batteryAsync.cancel(false);
 						// We give back the results as a String
 						JSONObject temp = new JSONObject(batteryLog);
 						String batteryResults = temp.toString();
@@ -234,7 +227,6 @@ public class YoutubePlayerActivity extends YouTubeFailureRecoveryActivity implem
 						YoutubePlayerActivity.this.setResult(RESULT_OK,
 								returnIntent);// tells previous activity the
 												// test was completed correctly
-						finish();
 						Context context = getApplicationContext();
 						CharSequence text = "Max video length reached";
 						int duration = Toast.LENGTH_LONG;
@@ -269,13 +261,9 @@ public class YoutubePlayerActivity extends YouTubeFailureRecoveryActivity implem
 		}
 
 		@Override
-		public void onLoaded(String arg0) {
-			controlPlaying = true;
-			batteryAsync = new checkBattery();
-			batteryAsync.execute();
-			//once the video is loaded,we can play it
-			player.play();
-			
+		public void onLoaded(String arg0) {		    
+			  //once the video is loaded,we can play it
+				player.play();
 		}
 
 		@Override
@@ -284,9 +272,7 @@ public class YoutubePlayerActivity extends YouTubeFailureRecoveryActivity implem
 
 		@Override
 		public void onVideoEnded() {
-			controlPlaying = false;//we declare the video has done playing by modifying control value
-			while(controlAsync == true){				
-			}
+			batteryAsync.cancel(false);
 			//We give back the results as a String
 			JSONObject temp = new JSONObject(batteryLog);
 			String batteryResults = temp.toString();
@@ -298,7 +284,8 @@ public class YoutubePlayerActivity extends YouTubeFailureRecoveryActivity implem
 
 		@Override
 		public void onVideoStarted() {
-
+			batteryAsync = new checkBattery();
+			batteryAsync.execute();
 		}
 	};
   
@@ -322,49 +309,73 @@ public class YoutubePlayerActivity extends YouTubeFailureRecoveryActivity implem
   		@Override
   		protected void onPreExecute() {
   			super.onPreExecute();
-  			controlAsync = true; 			
-
+  			
   		}
 
   		@Override
   		protected Void doInBackground(Void... arg0) {
   			
-  			try {
+			try {
 				Thread.sleep(1000);
 			} catch (InterruptedException e) {
-					e.printStackTrace();
+				e.printStackTrace();
 			}
-  			while(controlPlaying == true)//control tells us if video is playing or not
-  				{
-  				IntentFilter ifilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
-  				Intent batteryStatus = getApplicationContext().registerReceiver(null, ifilter);        
-  				int level = batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
-  				int scale = batteryStatus.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
-  				float newBatteryLvl = (level * 100) / (float)scale;
-  				
-  				//We will now have to check if battery level is the same as the old one. if so, we do not save it, on the contrary yes.
-  				if (!(newBatteryLvl == oldBatteryLvl)){
-  					oldBatteryLvl = newBatteryLvl;
-  					//Getting the timestamp
-  					SimpleDateFormat sdf = new SimpleDateFormat(dateFormat, Locale.US);
-  					Date date = new Date();
-  					//We use an hashmap to save all the couples timestamp/BatteryLvl(which is converted in string to avoid error in the conversion to JSON					
-  					batteryLog.put(sdf.format(date),String.valueOf(newBatteryLvl));		
-  				}
-  				
-  				try {
-  					Thread.sleep(res.getInteger(R.integer.sleepMsBatteryCheck));
-  				} catch (InterruptedException e) {
-  					// TODO Auto-generated catch block
-  					e.printStackTrace();
-  				}
-  			}
-  			controlAsync = false;  			
-  			return null;
+			
+			//we place here a check to see if the player has started, if not we start it. 
+			//This because this thread has a sleep of 1 sec that is helpful to wait until all
+			//setting of the videoPlayer has been done
+			if(!player.isPlaying()){
+				player.play();
+			}
+			
+			while (true)// control tells us if video is playing or not
+			{
+				if (!isCancelled()) {
+					IntentFilter ifilter = new IntentFilter(
+							Intent.ACTION_BATTERY_CHANGED);
+					Intent batteryStatus = getApplicationContext()
+							.registerReceiver(null, ifilter);
+					int level = batteryStatus.getIntExtra(
+							BatteryManager.EXTRA_LEVEL, -1);
+					int scale = batteryStatus.getIntExtra(
+							BatteryManager.EXTRA_SCALE, -1);
+					float newBatteryLvl = (level * 100) / (float) scale;
+
+					// We will now have to check if battery level is the same as
+					// the old one. if so, we do not save it, on the contrary
+					// yes.
+					if (!(newBatteryLvl == oldBatteryLvl)) {
+						oldBatteryLvl = newBatteryLvl;
+						// Getting the timestamp
+						SimpleDateFormat sdf = new SimpleDateFormat(dateFormat,
+								Locale.US);
+						Date date = new Date();
+						// We use an hashmap to save all the couples
+						// timestamp/BatteryLvl(which is converted in string to
+						// avoid error in the conversion to JSON
+						batteryLog.put(sdf.format(date),
+								String.valueOf(newBatteryLvl));
+					}
+
+					try {
+						Thread.sleep(res
+								.getInteger(R.integer.sleepMsBatteryCheck));
+					} catch (InterruptedException e) {
+						cancel(true);
+					}
+				}
+				else
+					return null;
+			}
   		}
 
   		@Override
   		protected void onPostExecute(Void result) {
+  			
+  		}
+  		
+  		@Override
+  		protected void onCancelled(){
   			
   		}
 

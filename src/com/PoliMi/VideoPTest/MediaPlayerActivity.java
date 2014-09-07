@@ -52,9 +52,6 @@ public class MediaPlayerActivity extends Activity implements SurfaceHolder.Callb
 	
 	private checkBattery batteryAsync;
 	
-	private boolean controlPlaying;
-	private boolean controlAsync;
-	
 	//Variable for resources
 	Resources res;
 	
@@ -149,7 +146,6 @@ public class MediaPlayerActivity extends Activity implements SurfaceHolder.Callb
 		
 		dialog.dismiss();
 		mediaPlayer.start();
-		controlPlaying = true;
 		batteryAsync = new checkBattery();
 		batteryAsync.execute();
 		if (max_length != 0){
@@ -162,12 +158,8 @@ public class MediaPlayerActivity extends Activity implements SurfaceHolder.Callb
 	
 			     @Override
 				public void onFinish() {
-					controlPlaying = false;// we declare the video has done
-											// playing by modifying control
-											// value
-					while (controlAsync == true) {
-					}
-					JSONObject temp = new JSONObject(batteryLog);
+			    	batteryAsync.cancel(true);	
+			    	JSONObject temp = new JSONObject(batteryLog);
 					String batteryResults = temp.toString();
 					Intent returnIntent = new Intent();
 					returnIntent.putExtra("batteryLog", batteryResults);
@@ -257,8 +249,7 @@ public class MediaPlayerActivity extends Activity implements SurfaceHolder.Callb
 	
 	@Override
 	public void onCompletion(MediaPlayer mp){
-		controlPlaying = false;//we declare the video has done playing by modifying control value
-		while(controlAsync == true){}
+		batteryAsync.cancel(true);
 		JSONObject temp = new JSONObject(batteryLog);
 		String batteryResults = temp.toString();
 		Intent returnIntent = new Intent();
@@ -277,36 +268,46 @@ public class MediaPlayerActivity extends Activity implements SurfaceHolder.Callb
 		@Override
 		protected void onPreExecute() {
 			super.onPreExecute();
-			controlAsync = true;
 		}
 
 		@Override
 		protected Void doInBackground(Void... arg0) {
-			while(mediaPlayer.isPlaying()){
-				
-				IntentFilter ifilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
-				Intent batteryStatus = getApplicationContext().registerReceiver(null, ifilter);        
-				int level = batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
-				int scale = batteryStatus.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
-				float newBatteryLvl = (level * 100) / (float)scale;
-				
-				//We will now have to check if battery level is the same as the old one. if so, we do not save it, on the contrary yes.
-				if (!(newBatteryLvl == oldBatteryLvl)){
-					//Getting the timestamp
-					SimpleDateFormat sdf = new SimpleDateFormat(dateFormat, Locale.US);
-					Date date = new Date();
-					//We use an hashmap to save all the couples timestamp/BatteryLvl					
-					batteryLog.put(sdf.format(date),String.valueOf(newBatteryLvl));		
-				}
-				
-				try {
-					Thread.sleep(res.getInteger(R.integer.sleepMsBatteryCheck));
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}				
+			while (true) {
+				if (!isCancelled()) {
+					IntentFilter ifilter = new IntentFilter(
+							Intent.ACTION_BATTERY_CHANGED);
+					Intent batteryStatus = getApplicationContext()
+							.registerReceiver(null, ifilter);
+					int level = batteryStatus.getIntExtra(
+							BatteryManager.EXTRA_LEVEL, -1);
+					int scale = batteryStatus.getIntExtra(
+							BatteryManager.EXTRA_SCALE, -1);
+					float newBatteryLvl = (level * 100) / (float) scale;
+
+					// We will now have to check if battery level is the same as
+					// the old one. if so, we do not save it, on the contrary
+					// yes.
+					if (!(newBatteryLvl == oldBatteryLvl)) {
+						// Getting the timestamp
+						SimpleDateFormat sdf = new SimpleDateFormat(dateFormat,
+								Locale.US);
+						Date date = new Date();
+						// We use an hashmap to save all the couples
+						// timestamp/BatteryLvl
+						batteryLog.put(sdf.format(date),
+								String.valueOf(newBatteryLvl));
+					}
+
+					try {
+						Thread.sleep(res
+								.getInteger(R.integer.sleepMsBatteryCheck));
+					} catch (InterruptedException e) {
+						cancel(true);
+						e.printStackTrace();
+					}
+				} else
+					return null;
 			}
-			controlAsync = false; 
-			return null;
 		}
 
 		@Override
