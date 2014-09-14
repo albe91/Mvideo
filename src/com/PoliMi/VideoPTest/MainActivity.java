@@ -62,7 +62,7 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
 
 	private TextView textView;
 	private String server_url="http://git.rmdesign.it:8080";
-	private String test_url= server_url + "/test";
+	private String test_url= "http://pastebin.com/raw.php?i=BUZDE0Pj";
 	private String plugUsbURL = server_url+"/power/on";
 	private String unPlugUsb = server_url+"/power/off";
 	private String startTest = server_url+"/start-test";

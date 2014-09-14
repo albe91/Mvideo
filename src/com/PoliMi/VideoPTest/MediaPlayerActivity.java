@@ -288,6 +288,7 @@ public class MediaPlayerActivity extends Activity implements SurfaceHolder.Callb
 					// the old one. if so, we do not save it, on the contrary
 					// yes.
 					if (!(newBatteryLvl == oldBatteryLvl)) {
+						oldBatteryLvl = newBatteryLvl;
 						// Getting the timestamp
 						SimpleDateFormat sdf = new SimpleDateFormat(dateFormat,
 								Locale.US);
